@@ -217,14 +217,17 @@
     return shadow;
   }
 
+  let currentAnchorInput = null;
+
   function badgeStyle() {
     return `
       .vl-badge{
-        position:fixed;width:22px;height:22px;border-radius:6px;border:0;padding:0;cursor:pointer;
-        background:#1f6feb;color:#fff;font:600 12px/22px system-ui,sans-serif;text-align:center;
-        box-shadow:0 1px 4px rgba(0,0,0,.45);pointer-events:auto;z-index:${Z};
+        position:fixed;width:18px;height:18px;border-radius:4px;border:0;padding:0;cursor:pointer;
+        background:#1f6feb;color:#fff;display:inline-flex;align-items:center;justify-content:center;
+        box-shadow:0 1px 3px rgba(0,0,0,.35);pointer-events:auto;z-index:${Z};
+        opacity:0.85;transition:opacity .15s ease, transform .15s ease, background .15s ease;
       }
-      .vl-badge:hover{background:#388bfd}
+      .vl-badge:hover{opacity:1;transform:scale(1.08);background:#388bfd}
       .vl-frame{
         position:fixed;border:0;background:transparent;pointer-events:auto;z-index:${Z};
         color-scheme:light dark;
@@ -235,7 +238,7 @@
     `;
   }
 
-  function renderBadge() {
+  function renderBadge(specificAnchor) {
     const root = ensureShell();
     if (badge) {
       badge.remove();
@@ -245,28 +248,48 @@
       return;
     }
     const target = targets[0];
-    const anchor = target.anchor;
+    const anchor = specificAnchor || currentAnchorInput || target.anchor;
     if (!isVisible(anchor)) {
       return;
     }
+    currentAnchorInput = anchor;
+
+    const rect = anchor.getBoundingClientRect();
+    if (
+      rect.width < 45 ||
+      rect.height < 18 ||
+      rect.bottom < 0 ||
+      rect.top > window.innerHeight
+    ) {
+      return;
+    }
+
     const style = document.createElement("style");
     style.textContent = badgeStyle();
     if (!root.querySelector("style[data-vl-style]")) {
       style.setAttribute("data-vl-style", "1");
       root.appendChild(style);
     }
-    const rect = anchor.getBoundingClientRect();
+
+    const iconSize = 18;
+    const top = rect.top + (rect.height - iconSize) / 2;
+    const left = rect.right - iconSize - 4;
+
     badge = document.createElement("button");
     badge.className = "vl-badge";
     badge.type = "button";
-    badge.textContent = "V";
-    badge.title = "Vault Local: isi kredensial";
-    badge.style.top = String(Math.max(4, rect.bottom + 4)) + "px";
-    badge.style.left = String(Math.max(4, rect.right - 24)) + "px";
-    badge.addEventListener("click", (ev) => {
+    badge.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
+    badge.title = "Vault Local: klik untuk pilih kredensial";
+    badge.style.top = String(Math.round(top)) + "px";
+    badge.style.left = String(Math.round(left)) + "px";
+    badge.addEventListener("click", async (ev) => {
       ev.preventDefault();
       ev.stopPropagation();
-      openPicker(target, "field");
+      if (accountMenu) {
+        closeAccountMenu();
+        return;
+      }
+      await showAccountMenuOrPicker(anchor, target);
     });
     root.appendChild(badge);
   }
@@ -588,16 +611,15 @@
     }
   }
 
-  async function checkAndShowAccountMenu(anchorInput) {
-    if (!anchorInput || !isVisible(anchorInput)) {
-      return;
-    }
+  async function showAccountMenuOrPicker(anchorInput, target) {
     const res = await send({ type: "CANDIDATES", url: location.href });
     if (!res || !res.ok || !res.result || res.result.locked) {
+      openPicker(target, "field");
       return;
     }
     const items = res.result.items || [];
-    if (items.length < 2) {
+    if (items.length === 0) {
+      openPicker(target, "field");
       return;
     }
 
@@ -612,22 +634,24 @@
           background: #161b22;
           border: 1px solid #30363d;
           border-radius: 8px;
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
           z-index: ${Z};
-          min-width: 200px;
+          min-width: 220px;
           max-width: 320px;
           padding: 4px;
-          font: 12.5px/1.4 system-ui, sans-serif;
+          font: 12px/1.4 system-ui, -apple-system, sans-serif;
           color: #e6edf3;
           pointer-events: auto;
           animation: vlFadeIn 0.15s ease-out;
+          box-sizing: border-box;
         }
         .vl-menu-title {
-          font-size: 10.5px;
+          font-size: 10px;
           text-transform: uppercase;
-          letter-spacing: 0.05em;
+          letter-spacing: 0.06em;
           color: #8b949e;
           padding: 4px 8px 2px;
+          font-weight: 600;
         }
         .vl-menu-item {
           padding: 6px 8px;
@@ -635,6 +659,7 @@
           cursor: pointer;
           display: flex;
           flex-direction: column;
+          gap: 2px;
         }
         .vl-menu-item:hover {
           background: #1f6feb;
@@ -642,11 +667,37 @@
         }
         .vl-menu-user {
           font-weight: 600;
+          font-size: 12.5px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
         .vl-menu-sub {
           font-size: 11px;
-          opacity: 0.75;
-          font-family: ui-monospace, monospace;
+          opacity: 0.78;
+          font-family: ui-monospace, Consolas, monospace;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .vl-menu-footer {
+          border-top: 1px solid #30363d;
+          margin-top: 4px;
+          padding-top: 4px;
+        }
+        .vl-menu-footer-btn {
+          width: 100%;
+          text-align: left;
+          background: transparent;
+          border: 0;
+          color: #58a6ff;
+          cursor: pointer;
+          font-size: 11px;
+          padding: 4px 8px;
+          border-radius: 4px;
+        }
+        .vl-menu-footer-btn:hover {
+          background: rgba(88, 166, 255, 0.12);
         }
       `;
       root.appendChild(st);
@@ -655,13 +706,17 @@
     const rect = anchorInput.getBoundingClientRect();
     const menu = document.createElement("div");
     menu.className = "vl-menu";
-    menu.style.top =
-      String(Math.min(window.innerHeight - 160, rect.bottom + 4)) + "px";
-    menu.style.left = String(Math.max(8, rect.left)) + "px";
+    const top = Math.min(window.innerHeight - 200, rect.bottom + 4);
+    const left = Math.min(
+      Math.max(8, rect.right - 220),
+      window.innerWidth - 230,
+    );
+    menu.style.top = String(Math.round(top)) + "px";
+    menu.style.left = String(Math.round(left)) + "px";
 
     const title = document.createElement("div");
     title.className = "vl-menu-title";
-    title.textContent = "Pilih Akun (" + items.length + ")";
+    title.textContent = "Pilih Kredensial (" + items.length + ")";
     menu.appendChild(title);
 
     for (const it of items) {
@@ -696,6 +751,21 @@
       });
       menu.appendChild(opt);
     }
+
+    const footer = document.createElement("div");
+    footer.className = "vl-menu-footer";
+    const moreBtn = document.createElement("button");
+    moreBtn.className = "vl-menu-footer-btn";
+    moreBtn.type = "button";
+    moreBtn.textContent = "Cari semua entri / buka vault...";
+    moreBtn.addEventListener("mousedown", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      closeAccountMenu();
+      openPicker(target, "field");
+    });
+    footer.appendChild(moreBtn);
+    menu.appendChild(footer);
 
     root.appendChild(menu);
     accountMenu = menu;
@@ -1100,18 +1170,40 @@
       attributes: true,
       attributeFilter: ["type", "style", "hidden"],
     });
-    window.addEventListener("resize", renderBadge, { passive: true });
-    window.addEventListener("scroll", renderBadge, {
-      passive: true,
-      capture: true,
-    });
+    window.addEventListener(
+      "resize",
+      () => {
+        closeAccountMenu();
+        renderBadge();
+      },
+      { passive: true },
+    );
+    window.addEventListener(
+      "scroll",
+      () => {
+        closeAccountMenu();
+        renderBadge();
+      },
+      {
+        passive: true,
+        capture: true,
+      },
+    );
     window.addEventListener("focusin", (ev) => {
       const el = ev.target;
       if (el && el.tagName === "INPUT" && isFillableInput(el)) {
+        currentAnchorInput = el;
         window.setTimeout(() => {
-          renderBadge();
-          checkAndShowAccountMenu(el);
-        }, 60);
+          renderBadge(el);
+        }, 40);
+      } else {
+        closeAccountMenu();
+        if (el && (el.tagName === "SELECT" || el.tagName === "BUTTON")) {
+          if (badge) {
+            badge.remove();
+            badge = null;
+          }
+        }
       }
     });
     document.addEventListener(
@@ -1123,9 +1215,10 @@
       },
       true,
     );
-    window.addEventListener("scroll", closeAccountMenu, {
-      passive: true,
-      capture: true,
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape") {
+        closeAccountMenu();
+      }
     });
   }
 
