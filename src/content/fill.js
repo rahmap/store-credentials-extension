@@ -668,18 +668,21 @@
       const opt = document.createElement("div");
       opt.className = "vl-menu-item";
 
+      const display = it.label || it.username || it.title || "Akun";
       const u = document.createElement("div");
       u.className = "vl-menu-user";
-      u.textContent = it.username || it.title || "Akun";
+      u.textContent = display;
 
       const sub = document.createElement("div");
       sub.className = "vl-menu-sub";
       sub.textContent =
-        it.title !== it.username
-          ? it.title
-          : it.url
-            ? new URL(it.url).pathname
-            : "";
+        it.label && it.username && it.label !== it.username
+          ? `${it.username} · ${it.title}`
+          : it.title !== display
+            ? it.title
+            : it.url
+              ? new URL(it.url).pathname
+              : "";
 
       opt.append(u, sub);
       opt.addEventListener("mousedown", async (ev) => {
@@ -812,6 +815,21 @@
         font-weight: 600;
         font-size: 12px;
       }
+      .vl-prompt-input {
+        width: 100%;
+        background: #0d1117;
+        border: 1px solid #30363d;
+        border-radius: 6px;
+        color: #e6edf3;
+        padding: 5px 8px;
+        font-size: 12px;
+        margin-top: 6px;
+        box-sizing: border-box;
+      }
+      .vl-prompt-input:focus {
+        outline: none;
+        border-color: #388bfd;
+      }
       @keyframes vlFadeIn {
         from { opacity: 0; transform: translateY(-8px); }
         to { opacity: 1; transform: translateY(0); }
@@ -871,7 +889,12 @@
     const urlEl = document.createElement("div");
     urlEl.className = "vl-prompt-url";
     urlEl.textContent = location.hostname || payload.url || "";
-    body.append(userEl, urlEl);
+    const labelInp = document.createElement("input");
+    labelInp.type = "text";
+    labelInp.className = "vl-prompt-input";
+    labelInp.placeholder = "Label akun (misal: Admin, Testing) [opsional]";
+    labelInp.value = payload.label || "";
+    body.append(userEl, urlEl, labelInp);
 
     const actions = document.createElement("div");
     actions.className = "vl-prompt-actions";
@@ -890,6 +913,7 @@
       saveBtn.textContent = isUpdate ? "Memperbarui\u2026" : "Menyimpan\u2026";
       const item = {
         id: payload.updateId || undefined,
+        label: labelInp.value.trim() || undefined,
         title: payload.existingTitle || location.hostname || "entri baru",
         url: payload.url || location.href,
         username: payload.username || "",
@@ -933,7 +957,7 @@
       }
       bannerTimer = window.setTimeout(() => {
         dismissBanner();
-      }, 10000);
+      }, 5000);
     };
 
     banner.addEventListener("mouseenter", () => {

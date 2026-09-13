@@ -110,6 +110,7 @@ export function normalizeItem(raw) {
   const src = raw || {};
   const base = {
     id: typeof src.id === "string" && src.id ? src.id : uuid(),
+    label: str(src.label),
     title: str(src.title) || str(src.url) || "tanpa nama",
     username: str(src.username),
     password: str(src.password),
@@ -149,6 +150,9 @@ export function normalizeItem(raw) {
   };
   if (!base.title) {
     base.title = hostnameOf(base.url) || "tanpa nama";
+  }
+  if (!base.label) {
+    base.label = base.username || base.title;
   }
   return base;
 }
@@ -482,7 +486,10 @@ export function queryItems(options = {}) {
       .filter((x) => x.s > 0)
       .sort(
         (a, b) =>
-          b.s - a.s || String(a.it.title).localeCompare(String(b.it.title)),
+          b.s - a.s ||
+          String(a.it.label || a.it.title).localeCompare(
+            String(b.it.label || b.it.title),
+          ),
       )
       .map((x) => x.it);
 
@@ -493,6 +500,7 @@ export function queryItems(options = {}) {
           .map((f) => f.label + " " + (f.type !== "password" ? f.value : ""))
           .join(" ");
         const hay = [
+          it.label,
           it.title,
           it.username,
           it.url,
@@ -519,6 +527,7 @@ export function queryItems(options = {}) {
           )
           .join(" ");
         const hay = [
+          it.label,
           it.title,
           it.username,
           it.url,
@@ -535,7 +544,14 @@ export function queryItems(options = {}) {
             break;
           }
           s += hay.startsWith(t) ? 3 : 2;
-          if (String(it.title).toLowerCase().startsWith(t)) {
+          if (
+            String(it.label || "")
+              .toLowerCase()
+              .startsWith(t) ||
+            String(it.title || "")
+              .toLowerCase()
+              .startsWith(t)
+          ) {
             s += 2;
           }
         }
@@ -718,6 +734,7 @@ export async function exportPlain() {
 export function exportCsv() {
   requireUnlocked();
   const cols = [
+    "label",
     "title",
     "url",
     "username",
@@ -864,6 +881,14 @@ export async function wipeVault() {
   return { wiped: true };
 }
 const CSV_ALIASES = {
+  label: [
+    "label",
+    "alias",
+    "account_name",
+    "display_name",
+    "nama akun",
+    "profile",
+  ],
   title: ["title", "name", "judul", "item", "account"],
   url: ["url", "uri", "site", "situs", "login_uri", "web"],
   username: [
@@ -956,6 +981,7 @@ function csvToItems(rows) {
       continue;
     }
     out.push({
+      label: get("label") || undefined,
       title,
       url,
       username,

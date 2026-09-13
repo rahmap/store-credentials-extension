@@ -202,9 +202,19 @@ async function refreshList() {
       "item" + (it.id === selectedId ? " is-active" : ""),
     );
     const main = make("div", "item__main");
+    const displayLabel = it.label || it.username || it.title;
+    const host = hostOf(it.url);
+    const subText =
+      it.label && it.username && it.label !== it.username
+        ? `${it.username} · ${host || it.url}`
+        : host || it.url || "";
     main.append(
-      make("div", "item__title", it.favorite ? "★ " + it.title : it.title),
-      make("div", "item__sub", it.username || it.url || ""),
+      make(
+        "div",
+        "item__title",
+        it.favorite ? "★ " + displayLabel : displayLabel,
+      ),
+      make("div", "item__sub", subText),
     );
     const acts = make("div", "item__actions");
     const fav = make("button", "btn btn--sm", it.favorite ? "★" : "☆");
@@ -235,6 +245,7 @@ function newEntry(url) {
   selectedId = null;
   el("editor").classList.remove("hidden");
   el("detail-empty").classList.add("hidden");
+  el("f-label").value = "";
   el("f-title").value = url ? hostOf(url) || "entri baru" : "";
   el("f-url").value = url || "";
   el("f-username").value = "";
@@ -275,6 +286,7 @@ async function select(id) {
   }
   el("editor").classList.remove("hidden");
   el("detail-empty").classList.add("hidden");
+  el("f-label").value = current.label || "";
   el("f-title").value = current.title || "";
   el("f-url").value = current.url || "";
   el("f-username").value = current.username || "";
@@ -472,6 +484,7 @@ on(el("editor"), "submit", async (ev) => {
   showError(el("edit-error"), "");
   const item = {
     id: current ? current.id : undefined,
+    label: el("f-label").value.trim() || undefined,
     title: el("f-title").value,
     url: el("f-url").value,
     username: el("f-username").value,

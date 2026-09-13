@@ -375,32 +375,95 @@ async function handle(msg, sender) {
       if (settings.captureOnSubmit === false || tabId == null || !msg.payload) {
         return { captured: false };
       }
+      await store.ensureUnlocked();
       if (store.isUnlocked()) {
-        const existing = store.queryItems({ url: msg.payload.url });
-        const existingMatch = existing.find((it) => {
-          if (it.username && msg.payload.username) {
-            return (
-              it.username.toLowerCase() === msg.payload.username.toLowerCase()
-            );
-          }
-          return !it.username && !msg.payload.username;
+        const existing = store.queryItems({
+          url: msg.payload.url,
+          reveal: true,
         });
-        if (existingMatch) {
-          if (existingMatch.password === msg.payload.password) {
+        const submittedUser = String(msg.payload.username || "")
+          .trim()
+          .toLowerCase();
+        const submittedPass = String(msg.payload.password || "").trim();
+
+        if (!submittedUser) {
+          const samePassItem = existing.find(
+            (it) => String(it.password || "").trim() === submittedPass,
+          );
+          if (samePassItem) {
             return { captured: false, reason: "already_exists" };
           }
-          const updatePayload = Object.assign({}, msg.payload, {
-            mode: "update",
-            updateId: existingMatch.id,
-            existingTitle: existingMatch.title,
-            oldPassword: existingMatch.password,
-          });
-          pendingCapture.set(tabId, {
-            payload: updatePayload,
-            at: Date.now(),
-            fromUrl: sender.tab ? sender.tab.url : "",
-          });
-          return { captured: true, mode: "update", title: existingMatch.title };
+          const noUserItem = existing.find(
+            (it) => !String(it.username || "").trim(),
+          );
+          if (noUserItem) {
+            const updatePayload = Object.assign({}, msg.payload, {
+              mode: "update",
+              updateId: noUserItem.id,
+              existingTitle: noUserItem.label || noUserItem.title,
+              oldPassword: noUserItem.password,
+            });
+            pendingCapture.set(tabId, {
+              payload: updatePayload,
+              at: Date.now(),
+              fromUrl: sender.tab ? sender.tab.url : "",
+            });
+            return {
+              captured: true,
+              mode: "update",
+              title: noUserItem.label || noUserItem.title,
+            };
+          }
+        } else {
+          const userMatch = existing.find(
+            (it) =>
+              it.username &&
+              String(it.username).trim().toLowerCase() === submittedUser,
+          );
+          if (userMatch) {
+            if (String(userMatch.password || "").trim() === submittedPass) {
+              return { captured: false, reason: "already_exists" };
+            }
+            const updatePayload = Object.assign({}, msg.payload, {
+              mode: "update",
+              updateId: userMatch.id,
+              existingTitle: userMatch.label || userMatch.title,
+              oldPassword: userMatch.password,
+            });
+            pendingCapture.set(tabId, {
+              payload: updatePayload,
+              at: Date.now(),
+              fromUrl: sender.tab ? sender.tab.url : "",
+            });
+            return {
+              captured: true,
+              mode: "update",
+              title: userMatch.label || userMatch.title,
+            };
+          }
+          const exactPassMatch = existing.find(
+            (it) =>
+              String(it.password || "").trim() === submittedPass &&
+              !String(it.username || "").trim(),
+          );
+          if (exactPassMatch) {
+            const updatePayload = Object.assign({}, msg.payload, {
+              mode: "update",
+              updateId: exactPassMatch.id,
+              existingTitle: exactPassMatch.label || exactPassMatch.title,
+              oldPassword: exactPassMatch.password,
+            });
+            pendingCapture.set(tabId, {
+              payload: updatePayload,
+              at: Date.now(),
+              fromUrl: sender.tab ? sender.tab.url : "",
+            });
+            return {
+              captured: true,
+              mode: "update",
+              title: exactPassMatch.label || exactPassMatch.title,
+            };
+          }
         }
       }
       const createPayload = Object.assign({}, msg.payload, { mode: "create" });

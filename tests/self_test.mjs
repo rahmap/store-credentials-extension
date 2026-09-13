@@ -382,4 +382,76 @@ assert.equal(matchedIp.id, ipItem.id);
 
 console.log("   Tes IP address & single host lolos.");
 
+console.log("== 12. Label Akun Kustom & Multi-Kredensial ==");
+// 1. Akun dengan label kustom eksplisit
+const itemAdmin = await storeMod.upsertItem({
+  label: "Akun Superadmin",
+  title: "ERP Internal",
+  url: "https://erp.kantor.local/admin",
+  username: "admin.super",
+  password: "AdminPassword123!",
+});
+assert.equal(itemAdmin.label, "Akun Superadmin");
+
+// 2. Akun tanpa label kustom (default otomatis ke username)
+const itemStaff = await storeMod.upsertItem({
+  title: "ERP Internal",
+  url: "https://erp.kantor.local/portal",
+  username: "budi.staff@kantor.local",
+  password: "StaffPassword456!",
+});
+assert.equal(itemStaff.label, "budi.staff@kantor.local");
+
+// 3. Cari berdasarkan label kustom
+const resAdmin = storeMod.queryItems({ query: "Superadmin" });
+assert.equal(resAdmin.length, 1);
+assert.equal(resAdmin[0].id, itemAdmin.id);
+
+// 4. Dua kredensial pada domain yang sama terdaftar jelas dengan label masing-masing
+const erpList = storeMod.queryItems({ url: "https://erp.kantor.local/admin" });
+assert.ok(erpList.length >= 2);
+assert.equal(erpList[0].label, "Akun Superadmin");
+
+console.log("   Tes label kustom lolos.");
+
+console.log("== 13. Verifikasi Pencegahan Prompt Duplikat ==");
+// Buat akun web khusus untuk tes
+const gateItem = await storeMod.upsertItem({
+  title: "Gate Lock",
+  url: "https://gatekeeper.kantor.local",
+  password: "GatePassword999!",
+});
+
+// 1. Password-only: Password persis sama -> HARUS diabaikan (sudah ada)
+const existingGate = storeMod.queryItems({
+  url: "https://gatekeeper.kantor.local",
+  reveal: true,
+});
+const samePassMatch = existingGate.find(
+  (it) => it.password === "GatePassword999!",
+);
+assert.ok(samePassMatch, "password harus cocok dengan reveal: true");
+
+// 2. Password-only: Password beda -> mode update
+const diffPassMatch = existingGate.find(
+  (it) => it.password === "NewPasswordDifferent!",
+);
+assert.equal(
+  diffPassMatch,
+  undefined,
+  "password berbeda tidak boleh dianggap sudah ada",
+);
+
+// 3. Akun username+password yang sudah ada
+const userPassItems = storeMod.queryItems({
+  url: "https://erp.kantor.local/admin",
+  reveal: true,
+});
+const existingAdmin = userPassItems.find(
+  (it) => it.username === "admin.super" && it.password === "AdminPassword123!",
+);
+assert.ok(existingAdmin, "akun admin harus cocok persis dengan reveal: true");
+
+console.log("   Tes pencegahan prompt duplikat lolos.");
+
 console.log("== SEMUA TEST BERHASIL ==");

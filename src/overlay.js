@@ -88,12 +88,22 @@ function itemRow(item) {
 
   const main = document.createElement("div");
   main.className = "item__main";
+  const display =
+    item.label ||
+    item.username ||
+    item.title ||
+    hostOf(item.url) ||
+    "tanpa nama";
   const title = document.createElement("div");
   title.className = "item__title";
-  title.textContent = item.title || hostOf(item.url) || "tanpa nama";
+  title.textContent = display;
+  const host = hostOf(item.url);
   const sub = document.createElement("div");
   sub.className = "item__sub";
-  sub.textContent = item.username || item.url || "";
+  sub.textContent =
+    item.label && item.username && item.label !== item.username
+      ? `${item.username} · ${host || item.url}`
+      : host || item.url || "";
   main.append(title, sub);
 
   const actions = document.createElement("div");

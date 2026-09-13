@@ -127,18 +127,26 @@ function row(item) {
   const node = make("div", "item");
   const main = make("div", "item__main");
   const title = make("div", "item__title");
-  title.textContent = item.favorite ? "★ " + item.title : item.title;
-  const customSummary = Array.isArray(item.fields)
-    ? item.fields
-        .filter((f) => f.type !== "password" && f.value)
-        .map((f) => `${f.label}: ${f.value}`)
-        .join(" · ")
-    : "";
-  const subText =
-    item.username ||
-    customSummary ||
-    item.url ||
-    (item.password ? "hanya password" : "");
+  const displayLabel = item.label || item.username || item.title;
+  title.textContent = item.favorite ? "★ " + displayLabel : displayLabel;
+
+  const host = hostOf(item.url);
+  let subText = "";
+  if (item.label && item.username && item.label !== item.username) {
+    subText = `${item.username} · ${host || item.url}`;
+  } else {
+    const customSummary = Array.isArray(item.fields)
+      ? item.fields
+          .filter((f) => f.type !== "password" && f.value)
+          .map((f) => `${f.label}: ${f.value}`)
+          .join(" · ")
+      : "";
+    subText =
+      customSummary ||
+      host ||
+      item.url ||
+      (item.password ? "hanya password" : "");
+  }
   const sub = make("div", "item__sub", subText);
   main.append(title, sub);
 
