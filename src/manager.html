@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <title>Vault Local — Pengelola</title>
+    <link rel="stylesheet" href="ui.css" />
+    <link rel="stylesheet" href="manager.css" />
+  </head>
+  <body>
+    <div class="app mgr">
+      <div class="bar topbar">
+        <span class="lock-dot" id="lock-dot"></span>
+        <span class="bar__title">Vault Local</span>
+        <nav class="tabs" id="tabs">
+          <button class="tab" data-view="entries">Entri</button>
+          <button class="tab" data-view="generator">Generator</button>
+          <button class="tab" data-view="data">Data</button>
+          <button class="tab" data-view="settings">Pengaturan</button>
+          <button class="tab" data-view="diag">Diagnostik</button>
+        </nav>
+        <span class="bar__spacer"></span>
+        <span class="muted tiny" id="vault-meta"></span>
+        <button class="btn btn--sm" id="btn-lock">Kunci</button>
+      </div>
+
+      <div class="body" id="body">
+        <section id="gate" class="gate hidden">
+          <div class="gate__card stack">
+            <h2 id="gate-title">Buka vault</h2>
+            <div id="gate-create" class="stack hidden">
+              <p class="notice">
+                Vault lokal belum ada di profil browser ini. Buat password
+                master untuk mengenkripsi semua entri dengan AES-256-GCM.
+              </p>
+              <div class="field">
+                <span class="field__label">Password master</span>
+                <input
+                  type="password"
+                  id="new-pass"
+                  class="input"
+                  autocomplete="new-password"
+                />
+                <div class="meter">
+                  <div class="meter__fill" id="new-meter"></div>
+                </div>
+                <span class="muted tiny" id="new-hint"></span>
+              </div>
+              <div class="field">
+                <span class="field__label">Ulangi password master</span>
+                <input
+                  type="password"
+                  id="new-pass2"
+                  class="input"
+                  autocomplete="new-password"
+                />
+              </div>
+              <div class="field">
+                <span class="field__label">Iterasi PBKDF2</span>
+                <input
+                  type="number"
+                  id="new-iter"
+                  class="input"
+                  value="600000"
+                  min="100000"
+                  step="50000"
+                />
+              </div>
+              <p class="notice notice--warn tiny">
+                Tidak ada pemulihan. Lupa password master berarti vault tidak
+                bisa dibuka lagi.
+              </p>
+            </div>
+            <div id="gate-unlock" class="stack hidden">
+              <div class="field">
+                <input
+                  type="password"
+                  id="mp"
+                  class="input"
+                  placeholder="Password master"
+                  autocomplete="off"
+                />
+              </div>
+            </div>
+            <div id="gate-error" class="notice notice--err hidden"></div>
+            <button class="btn btn--primary" id="gate-submit">
+              Buka vault
+            </button>
+          </div>
+        </section>
+
+        <section id="view-entries" class="entries hidden">
+          <aside class="side">
+            <input
+              type="search"
+              id="search"
+              class="input"
+              placeholder="Cari…"
+              autocomplete="off"
+            />
+            <div class="row" id="side-actions">
+              <button class="btn btn--sm" id="btn-new">+ Entri</button>
+              <span class="bar__spacer"></span>
+              <span class="muted tiny" id="count"></span>
+            </div>
+            <div id="list" class="list side__list"></div>
+          </aside>
+          <div class="detail" id="detail">
+            <div class="empty" id="detail-empty">
+              Pilih entri di kiri, atau buat yang baru.
+            </div>
+            <form id="editor" class="stack hidden" autocomplete="off">
+              <div class="row">
+                <div class="field grow">
+                  <span class="field__label">Judul</span>
+                  <input
+                    type="text"
+                    id="f-title"
+                    class="input"
+                    placeholder="contoh: SIKEP internal"
+                  />
+                </div>
+                <button
+                  type="button"
+                  class="btn btn--sm"
+                  id="f-fav"
+                  title="Favorit"
+                >
+                  ☆
+                </button>
+              </div>
+              <div class="field">
+                <span class="field__label">URL</span>
+                <input
+                  type="text"
+                  id="f-url"
+                  class="input mono"
+                  placeholder="https://sso.kantor.local"
+                />
+              </div>
+              <div class="field">
+                <span class="field__label">Username</span>
+                <input type="text" id="f-username" class="input mono" />
+              </div>
+              <div class="field">
+                <span class="field__label">Password</span>
+                <div class="row">
+                  <input
+                    type="password"
+                    id="f-password"
+                    class="input mono grow"
+                  />
+                  <button type="button" class="btn btn--sm" id="f-reveal">
+                    lihat
+                  </button>
+                  <button type="button" class="btn btn--sm" id="f-copy">
+                    salin
+                  </button>
+                  <button type="button" class="btn btn--sm" id="f-gen">
+                    acak
+                  </button>
+                </div>
+                <div class="meter">
+                  <div class="meter__fill" id="f-meter"></div>
+                </div>
+                <span class="muted tiny" id="f-hint"></span>
+              </div>
+              <div id="f-history" class="stack hidden">
+                <span class="field__label">Riwayat password</span>
+                <div id="f-history-list" class="list"></div>
+              </div>
+              <div class="row">
+                <div class="field grow">
+                  <span class="field__label">Secret TOTP (opsional)</span>
+                  <input
+                    type="text"
+                    id="f-totp"
+                    class="input mono"
+                    placeholder="JBSWY3DPEHPK3PXP"
+                  />
+                </div>
+                <div class="field totp-box">
+                  <span class="field__label">Kode</span>
+                  <span class="mono" id="f-totp-code">—</span>
+                </div>
+              </div>
+              <div class="field">
+                <div class="row">
+                  <span class="field__label"
+                    >Field Dinamis Kustom (NIP, PIN, Tenant, dll)</span
+                  >
+                  <span class="bar__spacer"></span>
+                  <button type="button" class="btn btn--sm" id="btn-add-field">
+                    + Field
+                  </button>
+                </div>
+                <div
+                  id="f-custom-fields"
+                  class="stack"
+                  style="margin-top: 6px"
+                ></div>
+              </div>
+              <div class="field">
+                <span class="field__label">Tag (pisahkan koma)</span>
+                <input type="text" id="f-tags" class="input" />
+              </div>
+              <div class="field">
+                <span class="field__label">Catatan</span>
+                <textarea id="f-notes" class="input"></textarea>
+              </div>
+              <div id="edit-error" class="notice notice--err hidden"></div>
+              <div class="row">
+                <button type="submit" class="btn btn--primary" id="f-save">
+                  Simpan
+                </button>
+                <button type="button" class="btn" id="f-fill">
+                  Isi ke tab aktif
+                </button>
+                <button type="button" class="btn" id="f-duplicate">
+                  Duplikat
+                </button>
+                <span class="bar__spacer"></span>
+                <button type="button" class="btn btn--danger" id="f-delete">
+                  Hapus
+                </button>
+              </div>
+              <p class="muted tiny" id="f-meta"></p>
+            </form>
+          </div>
+        </section>
+
+        <section id="view-generator" class="hidden">
+          <div class="panel stack">
+            <h3>Generator password</h3>
+            <div class="row row--wrap">
+              <label class="field inline"
+                ><span class="field__label">Panjang</span
+                ><input
+                  type="number"
+                  id="g-len"
+                  class="input sm"
+                  value="20"
+                  min="6"
+                  max="128"
+              /></label>
+              <label class="row"
+                ><input type="checkbox" id="g-lower" checked /> a-z</label
+              >
+              <label class="row"
+                ><input type="checkbox" id="g-upper" checked /> A-Z</label
+              >
+              <label class="row"
+                ><input type="checkbox" id="g-digit" checked /> 0-9</label
+              >
+              <label class="row"
+                ><input type="checkbox" id="g-symbol" checked /> simbol</label
+              >
+              <label class="row"
+                ><input type="checkbox" id="g-ambiguous" /> hindari karakter
+                ambigu</label
+              >
+            </div>
+            <div class="row">
+              <output id="g-out" class="mono grow out">—</output>
+              <button class="btn btn--primary" id="g-run">Acak</button>
+              <button class="btn" id="g-copy">Salin</button>
+              <button class="btn" id="g-use">Pakai di editor</button>
+            </div>
+            <span class="muted tiny" id="g-entropy"></span>
+          </div>
+        </section>
+
+        <section id="view-data" class="hidden">
+          <div class="panel stack">
+            <h3>Ekspor</h3>
+            <div class="row row--wrap">
+              <button class="btn" id="exp-enc">
+                Backup terenkripsi (.json)
+              </button>
+              <button class="btn" id="exp-plain">
+                Ekspor plaintext (.json)
+              </button>
+              <button class="btn btn--danger" id="exp-csv">
+                Ekspor CSV (tanpa enkripsi)
+              </button>
+            </div>
+            <p class="notice notice--warn tiny">
+              Backup terenkripsi tetap butuh password master untuk dibuka.
+              Ekspor plaintext dan CSV menyimpan semua password dalam berkas
+              yang bisa dibaca siapa pun — hapus setelah dipakai.
+            </p>
+          </div>
+          <div class="panel stack">
+            <h3>Impor</h3>
+            <div class="row row--wrap">
+              <input
+                type="file"
+                id="imp-file"
+                accept=".json,.csv,application/json,text/csv"
+              />
+              <select id="imp-mode" class="input sm">
+                <option value="merge">Gabung</option>
+                <option value="replace">Ganti seluruh vault</option>
+              </select>
+              <label class="row"
+                ><input type="checkbox" id="imp-dup" /> izinkan duplikat</label
+              >
+              <button class="btn btn--primary" id="imp-run">Impor</button>
+            </div>
+            <div class="field">
+              <span class="field__label"
+                >Password backup (hanya untuk backup terenkripsi)</span
+              >
+              <input type="password" id="imp-pass" class="input" />
+            </div>
+            <div class="field">
+              <span class="field__label">atau tempel JSON / CSV di sini</span>
+              <textarea
+                id="imp-text"
+                class="input mono"
+                placeholder='{"items": [...]}'
+              ></textarea>
+            </div>
+            <div id="imp-result" class="notice hidden"></div>
+          </div>
+          <div class="panel stack">
+            <h3>Zona berbahaya</h3>
+            <p class="muted tiny">
+              Menghapus vault akan membuang blob terenkripsi dari penyimpanan
+              lokal. Tidak ada pemulihan.
+            </p>
+            <div class="row">
+              <input
+                type="text"
+                id="wipe-word"
+                class="input sm"
+                placeholder="ketik HAPUS"
+              />
+              <button class="btn btn--danger" id="wipe-run">Hapus vault</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="view-settings" class="hidden">
+          <div class="panel stack">
+            <h3>Kunci otomatis dan clipboard</h3>
+            <div class="row row--wrap">
+              <label class="field inline"
+                ><span class="field__label">Auto-lock (menit, 180 = 3 jam)</span
+                ><input
+                  type="number"
+                  id="s-lock"
+                  class="input sm"
+                  min="1"
+                  max="1440"
+              /></label>
+              <label class="field inline"
+                ><span class="field__label"
+                  >Bersihkan clipboard (detik, 0 = mati)</span
+                ><input
+                  type="number"
+                  id="s-clip"
+                  class="input sm"
+                  min="0"
+                  max="300"
+              /></label>
+            </div>
+          </div>
+          <div class="panel stack">
+            <h3>Perilaku isi otomatis</h3>
+            <div class="field">
+              <select id="s-autofill" class="input">
+                <option value="prompt">Tanya dulu (badge di halaman)</option>
+                <option value="auto">
+                  Isi otomatis hanya jika host cocok persis
+                </option>
+                <option value="off">Matikan integrasi halaman</option>
+              </select>
+            </div>
+            <label class="row"
+              ><input type="checkbox" id="s-badge" /> tampilkan badge di halaman
+              login</label
+            >
+            <label class="row"
+              ><input type="checkbox" id="s-capture" /> tawarkan simpan saat
+              submit form</label
+            >
+            <div class="field">
+              <span class="field__label">Situs yang selalu diisi otomatis</span>
+              <div id="s-sites" class="row row--wrap"></div>
+              <div class="row">
+                <input
+                  type="text"
+                  id="s-site-add"
+                  class="input sm grow"
+                  placeholder="contoh: sso.kantor.local"
+                />
+                <button class="btn btn--sm" id="s-site-btn">Tambah</button>
+              </div>
+            </div>
+          </div>
+          <div class="panel stack">
+            <h3>Password master</h3>
+            <div class="row row--wrap">
+              <input
+                type="password"
+                id="pw-old"
+                class="input grow"
+                placeholder="Password lama"
+              />
+              <input
+                type="password"
+                id="pw-new"
+                class="input grow"
+                placeholder="Password baru"
+              />
+              <input
+                type="password"
+                id="pw-new2"
+                class="input grow"
+                placeholder="Ulangi baru"
+              />
+              <button class="btn btn--primary" id="pw-run">Ganti</button>
+            </div>
+            <div id="pw-msg" class="notice hidden"></div>
+          </div>
+          <div class="panel stack">
+            <h3>Kekuatan KDF</h3>
+            <p class="muted tiny">
+              Iterasi PBKDF2 yang lebih tinggi memperlambat brute force, tapi
+              juga memperlambat unlock. 600.000 adalah default aman.
+            </p>
+            <div class="row">
+              <input
+                type="password"
+                id="kdf-pass"
+                class="input grow"
+                placeholder="Password master"
+              />
+              <input
+                type="number"
+                id="kdf-iter"
+                class="input sm"
+                value="600000"
+                min="100000"
+                step="50000"
+              />
+              <button class="btn" id="kdf-run">Enkripsi ulang</button>
+            </div>
+            <div id="kdf-msg" class="notice hidden"></div>
+          </div>
+          <div class="row">
+            <button class="btn btn--primary" id="s-save">
+              Simpan pengaturan
+            </button>
+            <span class="muted tiny" id="s-msg"></span>
+          </div>
+        </section>
+
+        <section id="view-diag" class="hidden">
+          <div class="panel stack">
+            <h3>Diagnostik lingkungan</h3>
+            <table class="kv" id="diag-table"></table>
+            <p class="notice tiny" id="diag-note"></p>
+          </div>
+          <div class="panel stack">
+            <h3>Shortcut terdaftar</h3>
+            <table class="kv" id="cmd-table"></table>
+          </div>
+        </section>
+      </div>
+    </div>
+    <div class="toast" id="toast"></div>
+    <script src="manager.js" type="module"></script>
+  </body>
+</html>

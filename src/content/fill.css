@@ -1,0 +1,6 @@
+/* Highlight sementara untuk field yang diisi vault. */
+input[data-vl-filled="1"] {
+  outline: 2px solid #1f6feb !important;
+  outline-offset: 0 !important;
+  transition: outline-color 0.3s ease;
+}

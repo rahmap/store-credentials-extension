@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="ui.css" />
+    <link rel="stylesheet" href="overlay.css" />
+  </head>
+  <body>
+    <div class="app ov">
+      <div class="bar">
+        <span class="dot"></span>
+        <span class="bar__title" id="host">vault local</span>
+        <span class="bar__spacer"></span>
+        <button class="btn btn--ghost btn--sm" id="close" title="Tutup (Esc)">
+          ✕
+        </button>
+      </div>
+
+      <div class="body" id="body">
+        <section id="view-lock" class="stack hidden">
+          <p class="muted">Masukkan password master untuk membuka vault.</p>
+          <div class="field">
+            <input
+              type="password"
+              id="mp"
+              class="input"
+              placeholder="Password master"
+              autocomplete="off"
+            />
+          </div>
+          <div id="lock-error" class="notice notice--err hidden"></div>
+          <div class="row">
+            <button class="btn btn--primary" id="unlock">Buka</button>
+            <label class="row muted"
+              ><input type="checkbox" id="remember-tab" /> ingat untuk tab
+              ini</label
+            >
+          </div>
+          <p class="muted tiny" id="lock-host"></p>
+        </section>
+
+        <section id="view-create" class="stack hidden">
+          <p class="notice notice--warn">
+            Vault belum dibuat di profil browser ini.
+          </p>
+          <button class="btn btn--primary" id="open-manager">
+            Buka pengelola vault
+          </button>
+        </section>
+
+        <section id="view-save" class="stack hidden">
+          <p class="muted">Simpan kredensial yang baru dipakai?</p>
+          <div class="field">
+            <span class="field__label">Situs</span>
+            <input type="text" id="save-url" class="input mono" />
+          </div>
+          <div id="save-fields" class="stack"></div>
+          <div class="row">
+            <button class="btn btn--primary" id="save-confirm">Simpan</button>
+            <button class="btn" id="save-dismiss">Abaikan</button>
+          </div>
+        </section>
+
+        <section id="view-picker" class="stack hidden">
+          <input
+            type="search"
+            id="search"
+            class="input"
+            placeholder="Cari entri…"
+            autocomplete="off"
+          />
+          <div id="picker-error" class="notice notice--err hidden"></div>
+          <div id="results" class="list"></div>
+        </section>
+      </div>
+
+      <div class="foot">
+        <span class="muted tiny" id="foot-note"></span>
+        <span class="bar__spacer"></span>
+        <button class="btn btn--ghost btn--sm" id="lock-now">Kunci</button>
+      </div>
+    </div>
+    <div class="toast" id="toast"></div>
+    <script src="overlay.js" type="module"></script>
+  </body>
+</html>

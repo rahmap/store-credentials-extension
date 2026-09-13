@@ -1,0 +1,31 @@
+html,
+body {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}
+
+.ov {
+  height: 100vh;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: none;
+}
+
+.tiny {
+  font-size: 11px;
+}
+
+.body {
+  padding: 10px;
+}

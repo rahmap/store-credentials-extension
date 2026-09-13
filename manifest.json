@@ -1,0 +1,62 @@
+{
+  "manifest_version": 3,
+  "name": "Vault Local",
+  "version": "1.0.0",
+  "description": "Vault kredensial offline. AES-256-GCM + PBKDF2, data hanya di mesin ini.",
+  "minimum_chrome_version": "116",
+  "permissions": [
+    "storage",
+    "alarms",
+    "contextMenus",
+    "clipboardWrite",
+    "clipboardRead",
+    "tabs",
+    "unlimitedStorage",
+    "offscreen"
+  ],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "src/popup.html",
+    "default_title": "Vault Local"
+  },
+  "options_page": "src/manager.html#settings",
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["src/content/fill.js"],
+      "css": ["src/content/fill.css"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "commands": {
+    "_execute_action": {
+      "suggested_key": { "default": "Alt+Shift+V" },
+      "description": "Buka popup vault"
+    },
+    "lock-now": {
+      "suggested_key": { "default": "Alt+Shift+L" },
+      "description": "Kunci vault sekarang"
+    },
+    "fill-current": {
+      "suggested_key": { "default": "Alt+Shift+F" },
+      "description": "Isi kredensial di tab aktif"
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["src/overlay.html"],
+      "matches": ["http://*/*", "https://*/*"]
+    }
+  ],
+  "icons": {
+    "16": "assets/icon16.png",
+    "32": "assets/icon32.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  }
+}

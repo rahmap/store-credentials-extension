@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="ui.css" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="app pop">
+      <div class="bar">
+        <span class="lock-dot" id="lock-dot"></span>
+        <span class="bar__title" id="site">Vault Local</span>
+        <span class="bar__spacer"></span>
+        <button
+          class="btn btn--ghost btn--sm"
+          id="btn-lock"
+          title="Kunci (Alt+Shift+L)"
+        >
+          Kunci
+        </button>
+      </div>
+
+      <div class="body" id="body">
+        <section id="view-create" class="stack hidden">
+          <p class="notice">
+            Buat vault lokal. Semua entri dienkripsi AES-256-GCM dengan kunci
+            turunan dari password master (PBKDF2-SHA256, 600.000 iterasi). Data
+            tidak pernah keluar dari mesin ini.
+          </p>
+          <div class="field">
+            <span class="field__label">Password master</span>
+            <input
+              type="password"
+              id="new-pass"
+              class="input"
+              placeholder="minimal 8 karakter"
+              autocomplete="new-password"
+            />
+            <div class="meter">
+              <div class="meter__fill" id="new-meter"></div>
+            </div>
+            <span class="muted tiny" id="new-hint"></span>
+          </div>
+          <div class="field">
+            <span class="field__label">Ulangi</span>
+            <input
+              type="password"
+              id="new-pass2"
+              class="input"
+              autocomplete="new-password"
+            />
+          </div>
+          <p class="notice notice--warn tiny">
+            Password master tidak disimpan dan tidak bisa dipulihkan. Lupa =
+            vault hilang.
+          </p>
+          <div id="create-error" class="notice notice--err hidden"></div>
+          <button class="btn btn--primary" id="btn-create">Buat vault</button>
+        </section>
+
+        <section id="view-unlock" class="stack hidden">
+          <div class="field">
+            <input
+              type="password"
+              id="mp"
+              class="input"
+              placeholder="Password master"
+              autocomplete="off"
+            />
+          </div>
+          <div id="unlock-error" class="notice notice--err hidden"></div>
+          <button class="btn btn--primary" id="btn-unlock">Buka vault</button>
+          <p class="muted tiny" id="unlock-meta"></p>
+        </section>
+
+        <section id="view-main" class="stack hidden">
+          <div class="row">
+            <input
+              type="search"
+              id="search"
+              class="input"
+              placeholder="Cari judul, username, URL…"
+              autocomplete="off"
+            />
+          </div>
+          <div class="row row--wrap" id="chips"></div>
+          <div id="results" class="list"></div>
+        </section>
+      </div>
+
+      <div class="foot">
+        <button class="btn btn--sm" id="btn-add">Tambah</button>
+        <button class="btn btn--sm" id="btn-manager">Pengelola</button>
+        <span class="bar__spacer"></span>
+        <span class="muted tiny" id="foot-status"></span>
+      </div>
+    </div>
+    <div class="toast" id="toast"></div>
+    <script src="popup.js" type="module"></script>
+  </body>
+</html>

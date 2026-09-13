@@ -1,0 +1,49 @@
+html,
+body {
+  width: 372px;
+  height: 520px;
+}
+
+.pop {
+  height: 520px;
+}
+
+.body {
+  padding: 10px;
+}
+
+.lock-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  flex: none;
+}
+
+.lock-dot.is-open {
+  background: var(--ok);
+}
+
+.tiny {
+  font-size: 11px;
+}
+
+.item__actions .btn {
+  padding: 3px 6px;
+}
+
+.chip {
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.chip.is-on {
+  border-color: var(--accent);
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 18%, var(--bg-soft));
+}
