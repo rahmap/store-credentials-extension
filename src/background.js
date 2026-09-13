@@ -134,17 +134,29 @@ function broadcast(msg) {
 async function refreshBadge() {
   try {
     if (!store.isUnlocked()) {
-      await chrome.action.setBadgeText({ text: "" });
+      await chrome.action.setBadgeText({ text: "LOCK" });
+      await chrome.action.setBadgeBackgroundColor({ color: "#f85149" });
+      await chrome.action.setTitle({
+        title: "Vault Local — Terkunci (klik untuk buka)",
+      });
       return;
     }
     const tab = await activeTab();
-    if (!tab || !/^https?:/.test(tab.url || "")) {
-      await chrome.action.setBadgeText({ text: "" });
-      return;
+    const isWeb = tab && /^https?:/.test(tab.url || "");
+    const count = isWeb ? store.queryItems({ url: tab.url }).length : 0;
+    if (count > 0) {
+      await chrome.action.setBadgeText({ text: String(count) });
+      await chrome.action.setBadgeBackgroundColor({ color: "#1f6feb" });
+      await chrome.action.setTitle({
+        title: `Vault Local — ${count} akun cocok`,
+      });
+    } else {
+      await chrome.action.setBadgeText({ text: "ON" });
+      await chrome.action.setBadgeBackgroundColor({ color: "#238636" });
+      await chrome.action.setTitle({
+        title: "Vault Local — Terbuka (sesi aktif)",
+      });
     }
-    const n = store.queryItems({ url: tab.url }).length;
-    await chrome.action.setBadgeText({ text: n > 0 ? String(n) : "" });
-    await chrome.action.setBadgeBackgroundColor({ color: "#1f6feb" });
   } catch {
     /* badge bersifat dekoratif */
   }
@@ -365,39 +377,39 @@ async function handle(msg, sender) {
       }
       if (store.isUnlocked()) {
         const existing = store.queryItems({ url: msg.payload.url });
-        const alreadyExists = existing.some((it) => {
-          if (
-            it.username &&
-            msg.payload.username &&
-            it.username.toLowerCase() === msg.payload.username.toLowerCase()
-          ) {
-            return true;
+        const existingMatch = existing.find((it) => {
+          if (it.username && msg.payload.username) {
+            return (
+              it.username.toLowerCase() === msg.payload.username.toLowerCase()
+            );
           }
-          if (
-            !it.username &&
-            !msg.payload.username &&
-            it.password === msg.payload.password
-          ) {
-            return true;
-          }
-          if (
-            it.username === msg.payload.username &&
-            it.password === msg.payload.password
-          ) {
-            return true;
-          }
-          return false;
+          return !it.username && !msg.payload.username;
         });
-        if (alreadyExists) {
-          return { captured: false, reason: "already_exists" };
+        if (existingMatch) {
+          if (existingMatch.password === msg.payload.password) {
+            return { captured: false, reason: "already_exists" };
+          }
+          const updatePayload = Object.assign({}, msg.payload, {
+            mode: "update",
+            updateId: existingMatch.id,
+            existingTitle: existingMatch.title,
+            oldPassword: existingMatch.password,
+          });
+          pendingCapture.set(tabId, {
+            payload: updatePayload,
+            at: Date.now(),
+            fromUrl: sender.tab ? sender.tab.url : "",
+          });
+          return { captured: true, mode: "update", title: existingMatch.title };
         }
       }
+      const createPayload = Object.assign({}, msg.payload, { mode: "create" });
       pendingCapture.set(tabId, {
-        payload: msg.payload,
+        payload: createPayload,
         at: Date.now(),
         fromUrl: sender.tab ? sender.tab.url : "",
       });
-      return { captured: true };
+      return { captured: true, mode: "create" };
     }
 
     case "PENDING_CAPTURE": {

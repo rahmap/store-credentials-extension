@@ -267,14 +267,32 @@ const COMMON_SLDS = new Set([
   "web",
 ]);
 
+const IPV4_PATTERN = /^(\d{1,3}\.){3}\d{1,3}$/;
+
+export function isIpOrSingleHost(host) {
+  if (!host) {
+    return false;
+  }
+  return (
+    IPV4_PATTERN.test(host) ||
+    host.includes(":") ||
+    host.startsWith("[") ||
+    !host.includes(".")
+  );
+}
+
 export function domainKey(url) {
   const host = hostnameOf(url);
   if (!host) {
     return "";
   }
-  const parts = host.replace(/^www\./, "").split(".");
+  if (isIpOrSingleHost(host)) {
+    return host;
+  }
+  const clean = host.replace(/^www\./, "");
+  const parts = clean.split(".");
   if (parts.length <= 2) {
-    return parts.join(".");
+    return clean;
   }
   const sld = parts[parts.length - 2];
   const tld = parts[parts.length - 1];

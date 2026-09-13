@@ -480,8 +480,28 @@
     return filledAny;
   }
 
+  function isSearchOrFilterForm(form, descriptors) {
+    if (!form) return false;
+    const formRole = String(form.getAttribute("role") || "").toLowerCase();
+    const formAction = String(form.getAttribute("action") || "").toLowerCase();
+    if (formRole === "search" || /(search|find|filter)/.test(formAction)) {
+      return true;
+    }
+    const hasPassword = descriptors.some((d) => d.type === "password");
+    if (!hasPassword) {
+      const onlySearch = descriptors.every((d) =>
+        /(search|query|keyword|q|find)/i.test(d.name + " " + d.label),
+      );
+      if (onlySearch) return true;
+    }
+    return false;
+  }
+
   function captureFromForm(target) {
     if (!target || !target.descriptors || target.descriptors.length === 0) {
+      return null;
+    }
+    if (isSearchOrFilterForm(target.form, target.descriptors)) {
       return null;
     }
     const filled = target.descriptors.filter(
@@ -491,19 +511,29 @@
       return null;
     }
 
+    const pwds = filled.filter((d) => d.type === "password");
     let username = "";
     let password = "";
     const dynamicFields = [];
+
+    if (pwds.length >= 2) {
+      const newPwd = pwds.find((d) =>
+        /(new|baru)/i.test(d.name + " " + d.label + " " + d.autocomplete),
+      );
+      if (newPwd) {
+        password = newPwd.el.value;
+      } else {
+        password = pwds[pwds.length - 1].el.value;
+      }
+    } else if (pwds.length === 1) {
+      password = pwds[0].el.value;
+    }
 
     for (const d of filled) {
       const val = d.el.value;
       const label = d.label || d.name || "Field";
       const name = d.name || d.id || label.toLowerCase().replace(/\s+/g, "_");
-      if (d.type === "password") {
-        if (!password) {
-          password = val;
-        }
-      } else {
+      if (d.type !== "password") {
         const isUser =
           d.autocomplete.includes("username") ||
           d.autocomplete.includes("email") ||
@@ -512,12 +542,21 @@
         if (isUser && !username) {
           username = val;
         }
+        dynamicFields.push({
+          name,
+          label,
+          type: "text",
+          value: val,
+        });
       }
+    }
+
+    if (password) {
       dynamicFields.push({
-        name,
-        label,
-        type: d.type === "password" ? "password" : "text",
-        value: val,
+        name: "password",
+        label: "Password",
+        type: "password",
+        value: password,
       });
     }
 
@@ -528,12 +567,135 @@
       }
     }
 
+    if (!password && (!username || username.length < 2)) {
+      return null;
+    }
+
     return {
       url: location.href,
       username,
       password,
       fields: dynamicFields,
     };
+  }
+
+  let accountMenu = null;
+
+  function closeAccountMenu() {
+    if (accountMenu) {
+      accountMenu.remove();
+      accountMenu = null;
+    }
+  }
+
+  async function checkAndShowAccountMenu(anchorInput) {
+    if (!anchorInput || !isVisible(anchorInput)) {
+      return;
+    }
+    const res = await send({ type: "CANDIDATES", url: location.href });
+    if (!res || !res.ok || !res.result || res.result.locked) {
+      return;
+    }
+    const items = res.result.items || [];
+    if (items.length < 2) {
+      return;
+    }
+
+    closeAccountMenu();
+    const root = ensureShell();
+    if (!root.querySelector("style[data-vl-menu-style]")) {
+      const st = document.createElement("style");
+      st.setAttribute("data-vl-menu-style", "1");
+      st.textContent = `
+        .vl-menu {
+          position: fixed;
+          background: #161b22;
+          border: 1px solid #30363d;
+          border-radius: 8px;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+          z-index: ${Z};
+          min-width: 200px;
+          max-width: 320px;
+          padding: 4px;
+          font: 12.5px/1.4 system-ui, sans-serif;
+          color: #e6edf3;
+          pointer-events: auto;
+          animation: vlFadeIn 0.15s ease-out;
+        }
+        .vl-menu-title {
+          font-size: 10.5px;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: #8b949e;
+          padding: 4px 8px 2px;
+        }
+        .vl-menu-item {
+          padding: 6px 8px;
+          border-radius: 6px;
+          cursor: pointer;
+          display: flex;
+          flex-direction: column;
+        }
+        .vl-menu-item:hover {
+          background: #1f6feb;
+          color: #ffffff;
+        }
+        .vl-menu-user {
+          font-weight: 600;
+        }
+        .vl-menu-sub {
+          font-size: 11px;
+          opacity: 0.75;
+          font-family: ui-monospace, monospace;
+        }
+      `;
+      root.appendChild(st);
+    }
+
+    const rect = anchorInput.getBoundingClientRect();
+    const menu = document.createElement("div");
+    menu.className = "vl-menu";
+    menu.style.top =
+      String(Math.min(window.innerHeight - 160, rect.bottom + 4)) + "px";
+    menu.style.left = String(Math.max(8, rect.left)) + "px";
+
+    const title = document.createElement("div");
+    title.className = "vl-menu-title";
+    title.textContent = "Pilih Akun (" + items.length + ")";
+    menu.appendChild(title);
+
+    for (const it of items) {
+      const opt = document.createElement("div");
+      opt.className = "vl-menu-item";
+
+      const u = document.createElement("div");
+      u.className = "vl-menu-user";
+      u.textContent = it.username || it.title || "Akun";
+
+      const sub = document.createElement("div");
+      sub.className = "vl-menu-sub";
+      sub.textContent =
+        it.title !== it.username
+          ? it.title
+          : it.url
+            ? new URL(it.url).pathname
+            : "";
+
+      opt.append(u, sub);
+      opt.addEventListener("mousedown", async (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        closeAccountMenu();
+        const full = await send({ type: "FILL_ITEM", id: it.id });
+        if (full && full.ok && full.result && full.result.item) {
+          fillItem(full.result.item);
+        }
+      });
+      menu.appendChild(opt);
+    }
+
+    root.appendChild(menu);
+    accountMenu = menu;
   }
 
   let saveBanner = null;
@@ -680,9 +842,12 @@
     head.className = "vl-prompt-head";
     const dot = document.createElement("span");
     dot.className = "vl-prompt-dot";
+    const isUpdate = payload.mode === "update";
     const title = document.createElement("span");
     title.className = "vl-prompt-title";
-    title.textContent = "Simpan ke Vault Local?";
+    title.textContent = isUpdate
+      ? "Perbarui password di Vault?"
+      : "Simpan ke Vault Local?";
     const close = document.createElement("button");
     close.className = "vl-prompt-close";
     close.type = "button";
@@ -693,11 +858,13 @@
 
     const body = document.createElement("div");
     body.className = "vl-prompt-body";
-    const userText =
-      payload.username ||
-      (payload.fields && payload.fields[0]
-        ? payload.fields[0].label + ": " + payload.fields[0].value
-        : "Hanya Password");
+    const userText = isUpdate
+      ? (payload.username ? payload.username + " — " : "") +
+        "Password baru terdeteksi"
+      : payload.username ||
+        (payload.fields && payload.fields[0]
+          ? payload.fields[0].label + ": " + payload.fields[0].value
+          : "Hanya Password");
     const userEl = document.createElement("div");
     userEl.className = "vl-prompt-user";
     userEl.textContent = userText;
@@ -717,12 +884,13 @@
     const saveBtn = document.createElement("button");
     saveBtn.className = "vl-prompt-btn vl-prompt-btn-primary";
     saveBtn.type = "button";
-    saveBtn.textContent = "Simpan";
+    saveBtn.textContent = isUpdate ? "Perbarui" : "Simpan";
     saveBtn.addEventListener("click", async () => {
       saveBtn.disabled = true;
-      saveBtn.textContent = "Menyimpan\u2026";
+      saveBtn.textContent = isUpdate ? "Memperbarui\u2026" : "Menyimpan\u2026";
       const item = {
-        title: location.hostname || "entri baru",
+        id: payload.updateId || undefined,
+        title: payload.existingTitle || location.hostname || "entri baru",
         url: payload.url || location.href,
         username: payload.username || "",
         password: payload.password || "",
@@ -734,7 +902,9 @@
         body.replaceChildren();
         const ok = document.createElement("div");
         ok.className = "vl-prompt-ok";
-        ok.textContent = "\u2713 Kredensial tersimpan di vault";
+        ok.textContent = isUpdate
+          ? "\u2713 Password diperbarui di vault"
+          : "\u2713 Kredensial tersimpan di vault";
         body.appendChild(ok);
         actions.remove();
         window.setTimeout(() => dismissBanner(), 1200);
@@ -914,8 +1084,24 @@
     window.addEventListener("focusin", (ev) => {
       const el = ev.target;
       if (el && el.tagName === "INPUT" && isFillableInput(el)) {
-        window.setTimeout(renderBadge, 60);
+        window.setTimeout(() => {
+          renderBadge();
+          checkAndShowAccountMenu(el);
+        }, 60);
       }
+    });
+    document.addEventListener(
+      "mousedown",
+      (ev) => {
+        if (accountMenu && host && !host.contains(ev.target)) {
+          closeAccountMenu();
+        }
+      },
+      true,
+    );
+    window.addEventListener("scroll", closeAccountMenu, {
+      passive: true,
+      capture: true,
     });
   }
 

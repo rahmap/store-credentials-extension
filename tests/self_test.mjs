@@ -360,4 +360,26 @@ assert.equal(storeMod.isUnlocked(), true);
 
 console.log("   Tes sesi 180 menit lolos.");
 
+console.log("== 11. IP Address & Single Host Matcher ==");
+assert.equal(
+  cryptoMod.domainKey("http://192.168.1.50:8080/portal"),
+  "192.168.1.50",
+);
+assert.equal(cryptoMod.domainKey("http://10.20.0.1/"), "10.20.0.1");
+assert.equal(cryptoMod.domainKey("http://intranet/login"), "intranet");
+assert.equal(cryptoMod.domainKey("http://wiki/"), "wiki");
+
+const ipItem = await storeMod.upsertItem({
+  title: "Server Staging",
+  url: "http://192.168.1.50:8080/app",
+  username: "admin.staging",
+  password: "StagingPass123!",
+});
+
+const matchedIp = storeMod.exactMatch("http://192.168.1.50:8080/app/dashboard");
+assert.ok(matchedIp);
+assert.equal(matchedIp.id, ipItem.id);
+
+console.log("   Tes IP address & single host lolos.");
+
 console.log("== SEMUA TEST BERHASIL ==");
