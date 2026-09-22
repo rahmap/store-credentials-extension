@@ -958,7 +958,7 @@
     userEl.textContent = userText;
     const urlEl = document.createElement("div");
     urlEl.className = "vl-prompt-url";
-    urlEl.textContent = location.hostname || payload.url || "";
+    urlEl.textContent = location.host || location.hostname || payload.url || "";
     const labelInp = document.createElement("input");
     labelInp.type = "text";
     labelInp.className = "vl-prompt-input";
@@ -984,7 +984,7 @@
       const item = {
         id: payload.updateId || undefined,
         label: labelInp.value.trim() || undefined,
-        title: payload.existingTitle || location.hostname || "entri baru",
+        title: payload.existingTitle || location.host || location.hostname || "entri baru",
         url: payload.url || location.href,
         username: payload.username || "",
         password: payload.password || "",

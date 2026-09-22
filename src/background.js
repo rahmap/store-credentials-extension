@@ -3,6 +3,7 @@
 import {
   generatePassword,
   hostnameOf,
+  hostOf,
   passwordEntropy,
   totpCode,
   totpRemaining,
@@ -334,7 +335,7 @@ async function handle(msg, sender) {
     }
 
     case "REMEMBER_SITE": {
-      const host = hostnameOf(sender && sender.tab ? sender.tab.url : "");
+      const host = hostOf(sender && sender.tab ? sender.tab.url : "");
       if (!host) {
         throw new Error("host tidak dikenali");
       }
@@ -358,11 +359,14 @@ async function handle(msg, sender) {
       }
       const settings = await store.loadSettings();
       const url = msg.url || (sender && sender.tab ? sender.tab.url : "");
-      const host = hostnameOf(url);
+      const host = hostOf(url);
+      const hostname = hostnameOf(url);
+      const sites = settings.autoFillSites || [];
       const allowed =
         settings.autofill === "auto" ||
-        (settings.autoFillSites || []).includes(host);
-      if (!host || !allowed) {
+        sites.includes(host) ||
+        sites.includes(hostname);
+      if ((!host && !hostname) || !allowed) {
         return { item: null };
       }
       const item = store.exactMatch(url);

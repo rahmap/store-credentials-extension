@@ -76,7 +76,12 @@ export function showError(node, message) {
 
 export function hostOf(url) {
   try {
-    return new URL(url).hostname;
+    let raw = String(url || "").trim();
+    if (raw && !/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw)) {
+      raw = "http://" + raw;
+    }
+    const u = new URL(raw);
+    return u.host || u.hostname;
   } catch {
     return "";
   }

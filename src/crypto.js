@@ -246,7 +246,23 @@ export function totpRemaining(period = 30, at = Date.now()) {
 
 export function hostnameOf(url) {
   try {
-    return new URL(url).hostname.toLowerCase();
+    let raw = String(url || "").trim();
+    if (raw && !/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw)) {
+      raw = "http://" + raw;
+    }
+    return new URL(raw).hostname.toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+export function hostOf(url) {
+  try {
+    let raw = String(url || "").trim();
+    if (raw && !/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw)) {
+      raw = "http://" + raw;
+    }
+    return new URL(raw).host.toLowerCase();
   } catch {
     return "";
   }
@@ -307,7 +323,11 @@ export function domainKey(url) {
 }
 export function urlParts(url) {
   try {
-    const u = new URL(url);
+    let raw = String(url || "").trim();
+    if (raw && !/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw)) {
+      raw = "http://" + raw;
+    }
+    const u = new URL(raw);
     const pathname = u.pathname.replace(/\/+$/, "") || "/";
     return {
       host: u.hostname.toLowerCase(),

@@ -14,6 +14,7 @@ import {
   makeVerifier,
   checkVerifier,
   hostnameOf,
+  hostOf,
   domainKey,
   urlParts,
 } from "./crypto.js";
@@ -149,7 +150,7 @@ export function normalizeItem(raw) {
     updatedAt: Number(src.updatedAt) || now(),
   };
   if (!base.title) {
-    base.title = hostnameOf(base.url) || "tanpa nama";
+    base.title = hostOf(base.url) || hostnameOf(base.url) || "tanpa nama";
   }
   if (!base.label) {
     base.label = base.username || base.title;
@@ -439,12 +440,19 @@ export function scoreMatch(item, targetUrl) {
   }
 
   // Port check
-  if (itemParts.port && target.port) {
-    if (itemParts.port === target.port) {
-      s += 10;
+  const isStd = (p) => p === "80" || p === "443";
+  if (itemParts.port !== target.port) {
+    if (
+      itemParts.host === target.host &&
+      isStd(itemParts.port) &&
+      isStd(target.port)
+    ) {
+      s -= 15;
     } else {
-      s -= 30;
+      return 0;
     }
+  } else {
+    s += 10;
   }
 
   // Path check
@@ -974,7 +982,7 @@ function csvToItems(rows) {
         ? ""
         : String(r[map[key]] == null ? "" : r[map[key]]).trim();
     const url = get("url");
-    const title = get("title") || (url ? hostnameOf(url) : "");
+    const title = get("title") || (url ? hostOf(url) || hostnameOf(url) : "");
     const username = get("username");
     const password = get("password");
     if (!title && !username && !password) {
